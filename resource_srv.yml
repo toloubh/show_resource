@@ -1,21 +1,20 @@
 ---
-- name: Gather Root Disk Information and CPU and RAM information
+- name: Gather Hardware Information
   hosts: all
   become: yes
   tasks:
-    - name: Gather Facts
-      ansible.builtin.setup:
-        gather_subset: hardware
+    - name: Get CPU Information
+      ansible.builtin.command: "nproc"
+      register: cpu_count
 
-    - name: Display Root Disk Size
-      debug:
-        msg: "Server {{ inventory_hostname }} - Root Disk Size: {{ ansible_facts.devices[item].size }}"
-      loop: "{{ ansible_facts.devices.keys() }}"
-      when: "('sd' in item or 'vd' in item or 'nvme' in item) and ansible_facts.devices[item].partitions"
-      register: root_disk_info
-      tags: root_disk
+    - name: Get RAM Information
+      ansible.builtin.shell: "free -h | awk '/^Mem:/{print $2}'"
+      register: ram_size
 
-    - name: Get CPU and RAM information from Ubuntu server
-      debug:
-              msg: "Total CPU count: {{ ansible_processor_count }} , Total RAM size: {{ (ansible_memtotal_mb / 1024) | round(2) }} GB"
-        
+    - name: Get Root Disk Size
+      ansible.builtin.shell: "df -h / | awk 'NR==2{print $2}'"
+      register: root_disk_size
+
+    - name: Display Hardware Information
+      ansible.builtin.debug:
+        msg: "Server {{ inventory_hostname }} - Number of CPUs: {{ cpu_count.stdout }}, Total RAM: {{ ram_size.stdout }}, Root Disk Size: {{ root_disk_size.stdout }}"
